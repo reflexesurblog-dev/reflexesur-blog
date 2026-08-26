@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+import { getCollection } from 'astro:content';
+
+const articles = (await getCollection('articles', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf());
+---
+<BaseLayout title="Tous les guides | Réflexe Sûr" description="Tous les guides Réflexe Sûr sur les arnaques et la protection numérique.">
+  <div class="pagehero"><div class="wrap"><span class="pill">Bibliothèque pratique</span><h1>Tous les guides</h1><p class="lead">Des réponses simples et vérifiées pour reconnaître une arnaque et savoir quoi faire.</p></div></div>
+  <section><div class="wrap"><div class="cards">{articles.map((article) => <ArticleCard article={article} />)}</div></div></section>
+</BaseLayout>

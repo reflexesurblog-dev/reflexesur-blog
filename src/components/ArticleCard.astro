@@ -1,0 +1,10 @@
+---
+const { article } = Astro.props;
+const date = article.data.updatedAt ?? article.data.publishedAt;
+---
+<article class="card">
+  <span class="cat">{article.data.category}</span>
+  <h3><a href={`/articles/${article.id}/`}>{article.data.title}</a></h3>
+  <p>{article.data.description}</p>
+  <p class="meta">{article.data.readingTime} · Mis à jour le {date.toLocaleDateString('fr-FR')}</p>
+</article>

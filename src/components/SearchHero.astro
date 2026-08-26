@@ -1,0 +1,177 @@
+---
+const { articles = [] } = Astro.props;
+const searchArticles = articles.map((article) => ({
+  id: article.id,
+  title: article.data.title,
+  description: article.data.description,
+  category: article.data.category,
+  tags: article.data.tags ?? []
+}));
+---
+<section class="hero-search">
+  <div class="hero-content">
+    <span class="badge">✓ Comprendre avant d'agir</span>
+    <h1>Les bons réflexes contre les arnaques.</h1>
+    <p>Un message, un appel ou un site vous paraît suspect ? Recherchez le sujet et retrouvez les vérifications à faire avant d'agir.</p>
+
+    <form class="search-box" id="search-form" role="search">
+      <input id="search-input" type="search" placeholder="Ex. colis, banque, mot de passe…" autocomplete="off" aria-label="Rechercher un guide" />
+      <button type="submit">Rechercher</button>
+    </form>
+
+    <div class="popular-searches" aria-label="Recherches populaires">
+      <span>Recherches :</span>
+      <button type="button" class="popular-search" data-search="colis livraison colissimo">Colis</button>
+      <button type="button" class="popular-search" data-search="banque conseiller bancaire carte">Banque</button>
+      <button type="button" class="popular-search" data-search="mot de passe authentification compte">Compte piraté</button>
+    </div>
+
+    <div id="search-results" class="search-results" hidden aria-live="polite"></div>
+  </div>
+</section>
+
+<script define:vars={{ searchArticles }}>
+  const input = document.querySelector('#search-input');
+  const form = document.querySelector('#search-form');
+  const results = document.querySelector('#search-results');
+  const popularButtons = document.querySelectorAll('.popular-search');
+
+  const synonymGroups = [
+    ['colis', 'livraison', 'colissimo', 'chronopost', 'dhl', 'mondial', 'relay'],
+    ['banque', 'bancaire', 'carte', 'virement', 'conseiller', 'iban', 'rib'],
+    ['mot', 'passe', 'password', 'compte', 'authentification', '2fa', 'pirate', 'piratage'],
+    ['sms', 'message', 'texto'],
+    ['arnaque', 'fraude', 'escroquerie', 'phishing', 'hameconnage']
+  ];
+
+  function normalize(value = '') {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function expandToken(token) {
+    const group = synonymGroups.find((items) => items.includes(token));
+    return group ?? [token];
+  }
+
+  function scoreArticle(article, query) {
+    const tokens = normalize(query).split(' ').filter(Boolean);
+    if (!tokens.length) return 0;
+
+    const title = normalize(article.title);
+    const description = normalize(article.description);
+    const category = normalize(article.category);
+    const tags = normalize((article.tags || []).join(' '));
+    let score = 0;
+
+    for (const token of tokens) {
+      const variants = expandToken(token);
+      let best = 0;
+      for (const variant of variants) {
+        if (title.includes(variant)) best = Math.max(best, 6);
+        if (tags.includes(variant)) best = Math.max(best, 4);
+        if (category.includes(variant)) best = Math.max(best, 3);
+        if (description.includes(variant)) best = Math.max(best, 2);
+      }
+      score += best;
+    }
+    return score;
+  }
+
+  function render(query) {
+    const clean = normalize(query);
+    if (!clean) {
+      results.hidden = true;
+      results.innerHTML = '';
+      return;
+    }
+
+    const matches = searchArticles
+      .map((article) => ({ article, score: scoreArticle(article, clean) }))
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6);
+
+    results.hidden = false;
+
+    if (!matches.length) {
+      results.innerHTML = `
+        <div class="search-empty">
+          <strong>Aucun guide trouvé pour « ${escapeHtml(query)} ».</strong>
+          <span>Le sujet n'est peut-être pas encore publié. Essayez un mot plus général.</span>
+        </div>`;
+      return;
+    }
+
+    results.innerHTML = matches.map(({ article }) => `
+      <a class="search-result" href="/articles/${article.id}/">
+        <span class="cat">${escapeHtml(article.category)}</span>
+        <strong>${escapeHtml(article.title)}</strong>
+        <small>${escapeHtml(article.description)}</small>
+      </a>`).join('');
+  }
+
+  function escapeHtml(value = '') {
+    return value.replace(/[&<>'"]/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'
+    }[char]));
+  }
+
+  input?.addEventListener('input', (event) => render(event.target.value));
+  form?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    render(input?.value ?? '');
+  });
+
+  popularButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const query = button.dataset.search || '';
+      if (input) input.value = button.textContent?.trim() || query;
+      render(query);
+      input?.focus();
+    });
+  });
+</script>
+
+<style>
+  .hero-search {
+    padding: 58px 0 52px;
+    background: radial-gradient(circle at 13% 18%, rgba(15,118,110,.12), transparent 31%), linear-gradient(135deg,#eef9f5 0%,#fff9ed 100%);
+    border-bottom: 1px solid #eef1ef;
+  }
+  .hero-content { width: min(980px, calc(100% - 36px)); margin: 0 auto; }
+  .hero-search h1 { max-width: 820px; margin: 18px 0 14px; font-size: clamp(2.2rem, 3.7vw, 3.35rem); line-height: 1.03; }
+  .hero-search > .hero-content > p { max-width: 720px; margin: 0; color: #4d5e65; font-size: 1.08rem; }
+  .search-box { display: flex; max-width: 800px; gap: 10px; margin: 24px 0 16px; }
+  .search-box input { flex: 1; min-width: 0; padding: 15px 17px; border: 1px solid #cfdcda; border-radius: 13px; background: #fff; color: var(--ink); outline: none; box-shadow: 0 8px 24px rgba(24,61,56,.07); }
+  .search-box input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(15,118,110,.12); }
+  .search-box button { padding: 15px 21px; border: 0; border-radius: 13px; background: var(--brand); color: #fff; font-weight: 850; cursor: pointer; }
+  .search-box button:hover { background: var(--brand-dark); }
+  .popular-searches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+  .popular-searches span { font-weight: 750; color: #435259; }
+  .popular-search { padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.86); color: var(--ink); cursor: pointer; }
+  .popular-search:hover { border-color: #9fc9c4; background: #fff; }
+  .search-results { max-width: 800px; margin-top: 14px; padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 15px; box-shadow: 0 18px 45px rgba(24,61,56,.12); }
+  .search-result { display: flex; flex-direction: column; gap: 3px; padding: 13px 14px; border-radius: 10px; color: var(--ink); text-decoration: none; }
+  .search-result:hover { background: var(--soft); }
+  .search-result strong { font-size: .98rem; }
+  .search-result small { color: var(--muted); }
+  .search-empty { display: flex; flex-direction: column; gap: 4px; padding: 15px; color: var(--muted); }
+  .search-empty strong { color: var(--ink); }
+  [hidden] { display: none !important; }
+
+  @media (min-width: 1100px) {
+    .hero-search h1 { white-space: nowrap; }
+  }
+  @media (max-width: 660px) {
+    .hero-search { padding: 42px 0 38px; }
+    .hero-search h1 { font-size: clamp(2.15rem, 10vw, 2.8rem); }
+    .search-box { flex-direction: column; }
+    .search-box button { width: 100%; }
+  }
+</style>

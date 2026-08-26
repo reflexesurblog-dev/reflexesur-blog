@@ -1,0 +1,16 @@
+{
+  "name": "reflexesur-blog",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "new:article": "node scripts/new-article.mjs"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.5.1",
+    "astro": "^5.13.5"
+  }
+}

@@ -1,0 +1,60 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ArticleCard from '../components/ArticleCard.astro';
+import SearchHero from '../components/SearchHero.astro';
+import { getCollection } from 'astro:content';
+import { slugify } from '../lib/slugify';
+
+const articles = (await getCollection('articles', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf());
+const categories = [...new Set(articles.map((article) => article.data.category))];
+---
+<BaseLayout title="Réflexe Sûr — Arnaques et protection numérique" description="Reconnaître une arnaque, vérifier un message suspect et protéger ses comptes avec des guides simples et sourcés.">
+  <SearchHero articles={articles} />
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div><span class="pill">À lire maintenant</span><h2>Les guides essentiels</h2></div>
+        <p>Des réponses concrètes, avec des sources identifiées.</p>
+      </div>
+      <div class="cards">
+        {articles.slice(0, 6).map((article) => <ArticleCard article={article} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="soft">
+    <div class="wrap">
+      <div class="section-head">
+        <div><span class="pill">Explorer</span><h2>Par situation</h2></div>
+        <p>Commencez par le problème que vous rencontrez.</p>
+      </div>
+      <div class="grid4">
+        <div class="topic">🚨<b>Urgence arnaque</b><span>Agir après un clic, un appel ou un paiement.</span></div>
+        <div class="topic">🛡️<b>Protection numérique</b><span>Comptes, mots de passe et double authentification.</span></div>
+        <div class="topic">💬<b>Messages suspects</b><span>SMS, e-mails et faux avis de livraison.</span></div>
+        <div class="topic">💳<b>Argent</b><span>Banque, carte, virement et fraude.</span></div>
+      </div>
+    </div>
+  </section>
+
+  {categories.length > 0 && (
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="pill">Bibliothèque</span><h2>Catégories</h2></div>
+          <a href="/categories">Voir toutes les catégories</a>
+        </div>
+        <div class="category-grid">
+          {categories.slice(0, 6).map((category) => (
+            <a class="category-card" href={`/categories/${slugify(category)}/`}>
+              <strong>{category}</strong>
+              <span>Voir les guides</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+</BaseLayout>

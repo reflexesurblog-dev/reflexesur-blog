@@ -1,0 +1,54 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const articles = await getCollection('articles', ({ data }) => !data.draft);
+  return articles.map((article) => ({ params: { id: article.id }, props: { article } }));
+}
+
+const { article } = Astro.props;
+const { Content } = await render(article);
+const published = article.data.publishedAt;
+const updated = article.data.updatedAt ?? published;
+const articleUrl = new URL(`/articles/${article.id}/`, Astro.site).toString();
+const articleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: article.data.title,
+  description: article.data.description,
+  datePublished: published.toISOString(),
+  dateModified: updated.toISOString(),
+  inLanguage: 'fr-FR',
+  mainEntityOfPage: articleUrl,
+  author: { '@type': 'Organization', name: 'Réflexe Sûr' },
+  publisher: { '@type': 'Organization', name: 'Réflexe Sûr' }
+};
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Accueil', item: new URL('/', Astro.site).toString() },
+    { '@type': 'ListItem', position: 2, name: 'Guides', item: new URL('/articles/', Astro.site).toString() },
+    { '@type': 'ListItem', position: 3, name: article.data.title, item: articleUrl }
+  ]
+};
+---
+<BaseLayout title={`${article.data.title} | Réflexe Sûr`} description={article.data.description} type="article">
+  <Fragment slot="head">
+    <meta property="article:published_time" content={published.toISOString()} />
+    <meta property="article:modified_time" content={updated.toISOString()} />
+    <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
+  </Fragment>
+
+  <div class="pagehero"><div class="wrap"><span class="cat">{article.data.category}</span><h1>{article.data.title}</h1><p class="lead">{article.data.description}</p><div class="article-meta"><span>{article.data.readingTime}</span><span>Publié le {published.toLocaleDateString('fr-FR')}</span><span>Mis à jour le {updated.toLocaleDateString('fr-FR')}</span></div></div></div>
+
+  <section><div class="wrap article-grid">
+    <article class="content"><Content /><div class="ad"><b>Emplacement publicitaire réservé</b><br />À activer uniquement après validation AdSense et consentement adapté.</div></article>
+    <aside class="side">
+      <div class="sidebox"><h3>Réflexe Sûr</h3><p>Vérifiez les informations sensibles auprès du service officiel concerné avant d'effectuer un paiement ou de communiquer des données.</p></div>
+      <div class="notice"><strong>Sources :</strong> les liens officiels utilisés pour ce guide sont indiqués dans l'article.</div>
+    </aside>
+  </div></section>
+</BaseLayout>

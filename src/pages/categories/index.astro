@@ -1,0 +1,16 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import { slugify } from '../../lib/slugify';
+
+const articles = await getCollection('articles', ({ data }) => !data.draft);
+const counts = new Map();
+for (const article of articles) counts.set(article.data.category, (counts.get(article.data.category) || 0) + 1);
+const categories = [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0], 'fr'));
+---
+<BaseLayout title="Catégories | Réflexe Sûr" description="Explorer les guides Réflexe Sûr par catégorie.">
+  <div class="pagehero"><div class="wrap"><span class="pill">Explorer</span><h1>Catégories</h1><p class="lead">Retrouvez les guides selon votre situation.</p></div></div>
+  <section><div class="wrap"><div class="category-grid">
+    {categories.map(([category, count]) => <a class="category-card" href={`/categories/${slugify(category)}/`}><strong>{category}</strong><span>{count} guide{count > 1 ? 's' : ''}</span></a>)}
+  </div></div></section>
+</BaseLayout>
