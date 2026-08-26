@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
 import { getCollection, render } from 'astro:content';
 
 export async function getStaticPaths() {
@@ -12,6 +13,19 @@ const { Content } = await render(article);
 const published = article.data.publishedAt;
 const updated = article.data.updatedAt ?? published;
 const articleUrl = new URL(`/articles/${article.id}/`, Astro.site).toString();
+const allArticles = await getCollection('articles', ({ data }) => !data.draft);
+const currentTags = new Set((article.data.tags ?? []).map((tag) => tag.toLowerCase()));
+const related = allArticles
+  .filter((candidate) => candidate.id !== article.id)
+  .map((candidate) => {
+    const sameCategory = candidate.data.category === article.data.category ? 3 : 0;
+    const sharedTags = (candidate.data.tags ?? []).filter((tag) => currentTags.has(tag.toLowerCase())).length;
+    return { candidate, score: sameCategory + sharedTags };
+  })
+  .sort((a, b) => b.score - a.score || b.candidate.data.publishedAt.valueOf() - a.candidate.data.publishedAt.valueOf())
+  .slice(0, 2)
+  .map(({ candidate }) => candidate);
+
 const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'Article',
@@ -45,7 +59,18 @@ const breadcrumbSchema = {
   <div class="pagehero"><div class="wrap"><span class="cat">{article.data.category}</span><h1>{article.data.title}</h1><p class="lead">{article.data.description}</p><div class="article-meta"><span>{article.data.readingTime}</span><span>Publié le {published.toLocaleDateString('fr-FR')}</span><span>Mis à jour le {updated.toLocaleDateString('fr-FR')}</span></div></div></div>
 
   <section><div class="wrap article-grid">
-    <article class="content"><Content /><div class="ad"><b>Emplacement publicitaire réservé</b><br />À activer uniquement après validation AdSense et consentement adapté.</div></article>
+    <article class="content">
+      <Content />
+      {related.length > 0 && (
+        <div class="related">
+          <h2>À lire aussi</h2>
+          <div class="cards">
+            {related.map((item) => <ArticleCard article={item} />)}
+          </div>
+        </div>
+      )}
+      <div class="ad"><b>Emplacement publicitaire réservé</b><br />Aucun script publicitaire n'est chargé actuellement. Activation uniquement après validation AdSense et mise en conformité du consentement.</div>
+    </article>
     <aside class="side">
       <div class="sidebox"><h3>Réflexe Sûr</h3><p>Vérifiez les informations sensibles auprès du service officiel concerné avant d'effectuer un paiement ou de communiquer des données.</p></div>
       <div class="notice"><strong>Sources :</strong> les liens officiels utilisés pour ce guide sont indiqués dans l'article.</div>

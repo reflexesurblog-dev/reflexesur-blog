@@ -1,0 +1,53 @@
+---
+const enabled = import.meta.env.PUBLIC_TRACKING_ENABLED === 'true';
+---
+{enabled && (
+  <div class="consent" id="consent-banner" hidden role="dialog" aria-modal="true" aria-labelledby="consent-title">
+    <div class="consent-inner">
+      <div>
+        <strong id="consent-title">Vos préférences de confidentialité</strong>
+        <p>Avec votre accord, Réflexe Sûr pourra utiliser des services optionnels de mesure d'audience ou de publicité. Vous pouvez refuser sans perdre l'accès au site.</p>
+        <a href="/cookies/">En savoir plus</a>
+      </div>
+      <div class="consent-actions">
+        <button type="button" data-consent="refused" class="secondary">Refuser</button>
+        <button type="button" data-consent="accepted" class="primary-consent">Accepter</button>
+      </div>
+    </div>
+  </div>
+)}
+
+{enabled && (
+  <script is:inline>
+    (() => {
+      const storageKey = 'reflexesur-consent-v1';
+      const banner = document.getElementById('consent-banner');
+      const existing = localStorage.getItem(storageKey);
+      const emit = (value) => window.dispatchEvent(new CustomEvent('reflexesur:consent', { detail: value }));
+
+      if (existing) emit(existing);
+      else if (banner) banner.hidden = false;
+
+      banner?.querySelectorAll('[data-consent]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const value = button.getAttribute('data-consent');
+          localStorage.setItem(storageKey, value);
+          banner.hidden = true;
+          emit(value);
+        });
+      });
+    })();
+  </script>
+)}
+
+<style>
+  .consent { position: fixed; inset: auto 18px 18px 18px; z-index: 100; }
+  .consent-inner { width: min(780px, 100%); margin: 0 auto; display: flex; justify-content: space-between; gap: 22px; padding: 18px; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 22px 70px rgba(23,33,37,.22); }
+  .consent p { margin: 5px 0; color: var(--muted); font-size: .9rem; }
+  .consent a { font-size: .87rem; }
+  .consent-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .consent button { border: 0; border-radius: 10px; padding: 10px 13px; font-weight: 800; cursor: pointer; }
+  .consent .secondary { background: var(--soft); color: var(--ink); }
+  .consent .primary-consent { background: var(--brand); color: #fff; }
+  @media (max-width: 660px) { .consent-inner { flex-direction: column; } .consent-actions { width: 100%; } .consent button { flex: 1; } }
+</style>
